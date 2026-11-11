@@ -1,0 +1,31 @@
+# Variáveis de ambiente e segredos (Nunca versionar)
+.env
+.env.local
+.env.*.local
+.streamlit/secrets.toml
+
+# Byte-compiled / cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Ambientes virtuais
+.venv/
+venv/
+ENV/
+env/
+
+# Arquivos de sistema operacional, atalhos locais e documentos de apoio
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+*.lnk
+*.ico
+*.zip
+CONTEXTO_DO_PROJETO.md
+GS_Frontend_IA_2026-2.pdf

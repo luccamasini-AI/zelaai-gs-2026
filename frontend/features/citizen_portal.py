@@ -19,6 +19,7 @@ from frontend.ui.components import (
     render_empty_state_card,
     render_friendly_error_banner,
     render_occurrence_summary_card,
+    render_semantic_urgency_badge,
 )
 
 VULNERABILITY_OPTIONS_MAP = {
@@ -129,6 +130,11 @@ def _render_triage_result_and_human_in_the_loop(triage_data: Dict[str, Any]) -> 
             "e realizamos a ocultação automática para proteger sua identidade."
         )
 
+    render_semantic_urgency_badge(
+        urgency_level=ai_block.get("urgency_level", "MEDIA"),
+        custom_subtitle=f"Previsão de atendimento inicial: até {ai_block.get('estimated_sla_hours', 48)} horas",
+    )
+
     metric_col1, metric_col2, metric_col3 = st.columns(3)
     with metric_col1:
         st.metric(
@@ -178,6 +184,10 @@ def _render_triage_result_and_human_in_the_loop(triage_data: Dict[str, Any]) -> 
             st.markdown(
                 f"**Previsão de Atendimento Inicial:** Até {ai_block['estimated_sla_hours']} horas"
             )
+            if ai_block.get("classification_reasoning"):
+                st.markdown(
+                    f"**Justificativa do Encaminhamento:** {ai_block['classification_reasoning']}"
+                )
 
     _render_citizen_human_in_the_loop_box(triage_data)
 
@@ -189,10 +199,10 @@ def _render_citizen_human_in_the_loop_box(triage_data: Dict[str, Any]) -> None:
     weather_block = triage_data["location_and_weather"]
 
     with st.container(border=True):
-        st.markdown("### Conferência e Confirmação da Solicitação")
+        st.markdown("### Conferência e Confirmação da Solicitação (Human-in-the-Loop)")
         st.write(
-            "Confira abaixo a área de atendimento identificada para o seu relato. Você pode manter "
-            "a sugestão ou alterar a área antes de emitir o protocolo oficial:"
+            "Confira abaixo a área de atendimento e a prioridade identificadas para o seu relato. "
+            "Você pode manter a sugestão da análise ou ajustar antes de emitir o protocolo oficial:"
         )
 
         category_keys = list(catalog.keys())
@@ -201,20 +211,35 @@ def _render_citizen_human_in_the_loop_box(triage_data: Dict[str, Any]) -> None:
             if ai_block["official_category"] in category_keys
             else 0
         )
-
-        confirmed_category = st.selectbox(
-            "Confirmar ou Alterar a Área de Atendimento:",
-            options=category_keys,
-            index=default_cat_idx,
-            format_func=lambda k: f"{catalog[k]['tag']} {catalog[k]['label']}",
-            key="hitl_citizen_category",
+        urgency_options = ["BAIXA", "MEDIA", "ALTA", "CRITICA"]
+        default_urg_idx = (
+            urgency_options.index(ai_block.get("urgency_level", "MEDIA"))
+            if ai_block.get("urgency_level", "MEDIA") in urgency_options
+            else 1
         )
+
+        hitl_col1, hitl_col2 = st.columns([1.4, 1.0])
+        with hitl_col1:
+            confirmed_category = st.selectbox(
+                "Confirmar ou Alterar a Área de Atendimento:",
+                options=category_keys,
+                index=default_cat_idx,
+                format_func=lambda k: f"{catalog[k]['tag']} {catalog[k]['label']}",
+                key="hitl_citizen_category",
+            )
+        with hitl_col2:
+            confirmed_urgency = st.selectbox(
+                "Confirmar ou Alterar o Nível de Prioridade:",
+                options=urgency_options,
+                index=default_urg_idx,
+                key="hitl_citizen_urgency",
+            )
 
         eval_col1, eval_col2 = st.columns([1.1, 1.4])
         with eval_col1:
             helpful_choice = st.radio(
                 "As orientações apresentadas acima ajudaram você?",
-                options=["Sim, as orientações foram claras e úteis", "Parcialmente, precisei ajustar a área acima"],
+                options=["Sim, as orientações foram claras e úteis", "Parcialmente, precisei ajustar os dados acima"],
                 horizontal=False,
                 key="hitl_citizen_helpful",
             )
@@ -234,7 +259,6 @@ def _render_citizen_human_in_the_loop_box(triage_data: Dict[str, Any]) -> None:
                 use_container_width=True,
             ):
                 was_helpful_bool = helpful_choice.startswith("Sim")
-                confirmed_urgency = ai_block.get("urgency_level", "MEDIA")
                 confirm_payload = {
                     "draft_protocol_number": triage_data["draft_protocol_number"],
                     "confirmed_category": confirmed_category,
@@ -331,6 +355,18 @@ def _render_optional_example_loader() -> None:
                 with ex_col2:
                     st.markdown(f"**Há quanto tempo ocorre:** {example_data['duration']}")
                     st.markdown(f"**Quem é mais afetado no entorno:** {vuln_label}")
+                if st.button(
+                    "Preencher formulário com este exemplo",
+                    key="btn_apply_example_to_form",
+                    use_container_width=True,
+                ):
+                    st.session_state["form_desc_input"] = example_data["description"]
+                    st.session_state["form_type_input"] = example_data["problem_type"]
+                    st.session_state["form_duration_input"] = example_data["duration"]
+                    st.session_state["form_cep_input"] = example_data["cep"]
+                    st.session_state["form_ref_input"] = example_data["reference"]
+                    st.session_state["form_vuln_input"] = example_data["vulnerability"]
+                    st.rerun()
 
 
 def render_citizen_portal_feature() -> None:

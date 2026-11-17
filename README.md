@@ -3,6 +3,12 @@
 > **FIAP — Global Solution 2026/2 | Disciplina: Front-End em Sistemas de IA**
 > Solução **CitizenTech** de ponta a ponta que conecta relatos de cidadãos a um back-end **FastAPI**, **Modelo Preditivo Próprio (`scikit-learn`)**, **Dados Abertos em Tempo Real (ViaCEP + Open-Meteo)** e **Inteligência Artificial Generativa (Google Gemini 2.5 Flash)** com saída estruturada (**Pydantic**) e validação **Human-in-the-Loop**.
 
+## Integrantes do Grupo e Vídeo de Demonstração
+- **Lucca Phelipe Masini** — RM 564121
+- **Igor Paixão Sarak** — RM 563726
+- **Bernardo Braga Perobeli** — RM 562468
+- **Vídeo de Demonstração (YouTube — Não Listado):** [https://youtu.be/guR-1TvWYC0](https://youtu.be/guR-1TvWYC0)
+
 ---
 
 ## Sumário
@@ -107,11 +113,11 @@ flowchart LR
 
 1. **Por que Streamlit no Front-end?**
    - Permite construir uma interface responsiva e centrada no cidadão utilizando *tabs*, *colunas*, *sidebar* de perfil de acesso, indicadores (`st.metric`) e integração nativa com gráficos interativos **Plotly**.
-   - Oferece controle explícito de performance através de `st.session_state` (mantendo o histórico de solicitações vivo entre interações), `@st.cache_data` (evitando reprocessar catálogos, DataFrames e health-checks a cada *rerun*) e `@st.cache_resource` (reutilizando a configuração do cliente HTTP).
-2. **Por que Google Gemini 2.5 Flash + Saída Estruturada Pydantic + Contingência Local?**
-   - O modelo `gemini-2.5-flash` oferece baixa latência, camada gratuita acessível (*Google AI Studio*) e suporte nativo a *Structured Outputs* (`responseSchema` JSON).
-   - A validação dupla com **Pydantic (`StructuredAiTriageOutput`)** no back-end garante que o front-end jamais receba um "dump de texto livre" ou um JSON malformado.
-   - Para máxima resiliência acadêmica e de produção, implementamos também um **Motor Semântico Determinístico de Contingência** acoplado ao modelo `RandomForestRegressor` (`scikit-learn`), garantindo funcionamento 100% estruturado mesmo em ambientes sem chave de API ou sem acesso externo.
+   - Oferece controle explícito de performance através de `st.session_state` (mantendo o histórico de solicitações vivo entre interações), `@st.cache_data` (evitando reprocessar catálogos, DataFrames e health-checks HTTP a cada *rerun*) e `@st.cache_resource` (reutilizando a configuração do cliente HTTP).
+2. **Por que a Engenharia de Prompt (`_build_citizen_tech_prompt`) e o Formato de Saída Estruturado (`StructuredAiTriageOutput`) escolhidos?**
+   - **Engenharia do Prompt:** O prompt (`backend/app/providers/llm_provider.py`) foi projetado com *Role Prompting* (especialista de triagem CitizenTech) enriquecido com contexto real (*grounding*) antes do envio ao LLM: injeta o relato já sanitizado, o endereço oficial obtido via **ViaCEP**, a telemetria meteorológica em tempo real da **Open-Meteo** (mm de chuva e temperatura) e o score numérico (`0 a 100`) calculado pelo modelo `RandomForestRegressor`, operando com `temperature=0.2` para máxima precisão e ausência de alucinações.
+   - **Formato de Saída Estruturado:** O modelo `gemini-2.5-flash` recebe o contrato estrito via `responseMimeType="application/json"` e `responseSchema=GEMINI_RESPONSE_JSON_SCHEMA`, seguido de validação dupla com **Pydantic (`StructuredAiTriageOutput`)** no back-end, garantindo que o front-end jamais receba um "dump de texto livre" ou JSON malformado.
+   - **Contingência Local Resiliente:** Implementamos também um **Motor Semântico Determinístico de Contingência** acoplado ao `RandomForestRegressor` (`scikit-learn`), garantindo retorno 100% estruturado mesmo em ambientes sem chave de API ou sem internet.
 3. **Por que Docker + Variáveis de Ambiente para Deploy?**
    - A conteinerização com `backend/Dockerfile`, `frontend/Dockerfile` e `docker-compose.yml` garante reprodutibilidade exata com um único comando (`docker compose up --build`), enquanto a parametrização via `API_BASE_URL` permite hospedar o front-end no *Streamlit Community Cloud* e a API no *Render*.
 
@@ -123,7 +129,7 @@ Seguindo as diretrizes **WCAG 2.1 (Níveis AA e AAA)** e os requisitos da **Seç
 
 - [x] **Tela Inicial de Acessibilidade (Onboarding Inclusivo):** Ao acessar o sistema, a plataforma apresenta em primeiro plano três cartões de leitura (`1. Visualização Padrão`, `2. Letras Ampliadas`, `3. Alto Contraste + Letras Ampliadas`) acompanhados de instrução em voz alta, mais botão fixo no cabeçalho (`Alterar Modo de Leitura / Acessibilidade`).
 - [x] **Independência de Cor (Critério WCAG 1.4.1):** Nenhum estado de criticidade ou erro depende apenas de cor. Todos os indicadores semânticos (`render_semantic_urgency_badge`) combinam **Tag textual explícita em colchetes (`[PRIORIDADE CRÍTICA]`, `[PRIORIDADE ALTA]`, `[PRIORIDADE MÉDIA]`, `[PRIORIDADE BAIXA]`) + Descrição da situação + Prazo de referência + Borda lateral de alto contraste**.
-- [x] **Linguagem Simples e Ausência de Jargão Técnico (Critério 3.1.5 / Seção 3.5):** O Portal do Cidadão exibe exclusivamente os campos de preenchimento e os relatos registrados, deixando métricas técnicas de prioridade e gravidade restritas à Central do Gestor.
+- [x] **Linguagem Simples e Ausência de Jargão Técnico (Critério 3.1.5 / Seção 3.5):** O Portal do Cidadão apresenta todas as orientações, prazos e indicadores de prioridade em linguagem cidadã clara e acessível, reservando o índice numérico bruto de gravidade (`technical_risk_score`) para a fila operacional da Central do Gestor.
 - [x] **Modo de Alto Contraste WCAG AAA (Critério 1.4.6):** Aplica fundo preto absoluto (`#000000`), tipografia branca (`#FFFFFF`) e bordas amarelas vibrantes (`#FFD600` — razão de contraste > 14:1).
 - [x] **Escala Tipográfica Ajustável (Critério 1.4.4):** O modo `Letras Ampliadas` aumenta toda a tipografia da interface e ativa botões de apoio em áudio no preenchimento e leitura de relatos.
 - [x] **Leitura em Voz Alta Nativa — Text-to-Speech (Critério 1.2 / Inclusão Digital):** Botões `🔊 Ouvir em Áudio` integrados à tela inicial, às etapas do formulário, aos exemplos, às orientações de segurança e aos cartões de relatos (*Web Speech API* `pt-BR`).
@@ -133,10 +139,11 @@ Seguindo as diretrizes **WCAG 2.1 (Níveis AA e AAA)** e os requisitos da **Seç
 
 ## 6. Ética, Privacidade (LGPD) e Limites da IA
 
-### Riscos Mapeados
-- **Erro de Classificação ou Subestimação de Risco:** Um relato ambíguo pode fazer com que o modelo atribua prioridade menor do que a necessária.
-- **Alucinação em Instruções:** Modelos generativos puros poderiam sugerir ações perigosas (como tentar desentupir um bueiro durante uma enchente).
-- **Exposição de Dados Pessoais (LGPD):** Cidadãos frequentemente digitam números de CPF ou e-mail no corpo livre do relato.
+### Riscos Mapeados (Erro, Viés, Alucinação e Uso Indevido)
+- **Erro de Classificação ou Subestimação de Risco:** Um relato curto ou ambíguo pode fazer com que o modelo atribua uma prioridade inicial menor do que a gravidade real no local.
+- **Viés Algorítmico e Territorial:** Modelos de linguagem poderiam priorizar relatos mais formais ou regiões centrais em detrimento de moradores de áreas periféricas ou com menor letramento digital. Mitigamos esse viés ancorando o score de risco em variáveis objetivas (volume real de chuva em mm na coordenada do CEP e presença de grupos vulneráveis/encostas) e utilizando linguagem simples com apoio em áudio.
+- **Alucinação em Instruções:** Modelos generativos sem restrição poderiam sugerir ações perigosas ao morador (como tentar desobstruir um bueiro manualmente durante uma enchente ou tocar em galhos na rede elétrica). Mitigamos isso com baixa temperatura (`0.2`), diretrizes estritas de autoproteção da Defesa Civil no prompt e validação estruturada via Pydantic.
+- **Uso Indevido (Trotes, Injeção de Prompt/XSS e Exposição de Dados Pessoais — LGPD):** Usuários mal-intencionados podem tentar injetar scripts/comandos no formulário, ou cidadãos podem digitar acidentalmente dados sensíveis (CPF e e-mail) no relato livre.
 
 ### O que a Solução NÃO Faz (Limites Claros)
 1. **Não substitui serviços de emergência médica ou salvamento imediato (193 / 192 / 199):** Em situações de risco iminente à vida, a interface orienta explicitamente o acionamento telefônico imediato do Corpo de Bombeiros ou Defesa Civil.
@@ -145,8 +152,8 @@ Seguindo as diretrizes **WCAG 2.1 (Níveis AA e AAA)** e os requisitos da **Seç
 ### Como a Arquitetura e o Human-in-the-Loop Mitigam os Riscos
 - **Duplo Human-in-the-Loop:**
   1. **Validação pelo Cidadão:** Antes de emitir o protocolo oficial, o cidadão confere a classificação sugerida, pode **alterar a área de atendimento ou o nível de prioridade** caso discorde e avalia se as orientações foram úteis.
-  2. **Revisão pelo Gestor Municipal (RBAC):** Na aba *3. Central do Gestor*, o servidor municipal revisa os protocolos, pode reclassificar a prioridade operacional e emite a instrução para a equipe de campo.
-- **Sanitização e Anonimização Automática LGPD (`occurrence_schema.py`):** Expressões regulares detectam e mascaram automaticamente números de CPF (`[CPF PROTEGIDO - LGPD]`) e e-mails (`[EMAIL PROTEGIDO - LGPD]`) antes de qualquer envio ao provedor externo.
+  2. **Revisão pelo Gestor Municipal (RBAC):** Na visão *Central do Gestor*, o servidor municipal revisa os protocolos, pode reclassificar a prioridade operacional e emite a instrução para a equipe de campo.
+- **Sanitização Contra Uso Indevido e Anonimização Automática LGPD (`occurrence_schema.py`):** Validações Pydantic bloqueiam vetores de XSS/SQLi e expressões regulares mascaram automaticamente números de CPF (`[CPF PROTEGIDO - LGPD]`) e e-mails (`[EMAIL PROTEGIDO - LGPD]`) antes de qualquer envio ao provedor externo.
 
 ---
 

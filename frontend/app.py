@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from frontend.features.analytics_dashboard import render_analytics_dashboard_feature
 from frontend.features.citizen_portal import render_citizen_portal_feature
 from frontend.features.manager_backoffice import render_manager_backoffice_feature
+from frontend.providers.api_client import check_backend_health_status
 from frontend.state.session_manager import initialize_application_session_state
 from frontend.ui.accessibility import (
     apply_accessibility_and_theme_styles,
@@ -62,6 +63,17 @@ def _render_sidebar_controls() -> None:
             help="Permite demonstrar como a plataforma orienta o cidadão caso ocorram falhas de comunicação.",
         )
 
+        st.markdown("---")
+        simulate_offline = st.session_state["simulate_failure_mode"] == "API_OFFLINE"
+        is_online, health_payload = check_backend_health_status(
+            simulate_offline=simulate_offline
+        )
+        if is_online:
+            llm_model = health_payload.get("llm_model", "gemini-2.5-flash")
+            st.caption(f"Status da API: **Online** (`{llm_model}`)")
+        else:
+            st.caption("Status da API: **Indisponível / Simulação Offline**")
+
 
 def main() -> None:
     """Configura a página, tela inicial de acessibilidade e visão de Cidadão ou Gestor."""
@@ -92,7 +104,16 @@ def main() -> None:
     if active_role == "CIDADAO":
         with citizen_workspace:
             render_platform_accessibility_header_bar()
-            render_citizen_portal_feature()
+            tab_citizen, tab_citizen_analytics = st.tabs(
+                [
+                    "1. Portal do Cidadão (Registrar Solicitação)",
+                    "2. Painel de Monitoramento e Gráficos",
+                ]
+            )
+            with tab_citizen:
+                render_citizen_portal_feature()
+            with tab_citizen_analytics:
+                render_analytics_dashboard_feature()
     else:
         with manager_workspace:
             render_platform_accessibility_header_bar()
